@@ -4,30 +4,31 @@
 *                                                                          *
 ***************************************************************************/
 
-#ifndef __VRAYGOLAEM_H__
-#define __VRAYGOLAEM_H__
+#pragma once
 
 #pragma warning( push )
-#pragma warning( disable : 4100 4251 4275 4996 )
+#pragma warning( disable : 4840)
 
 #include "max.h"
-#include <bmmlib.h>
-#include "iparamm2.h"
-#include "render.h"  
-#include "texutil.h"
-#include "gizmo.h"
-#include "gizmoimp.h"
-#include "istdplug.h"
+
+#pragma warning ( pop )
+
+#pragma warning( push )
+#pragma warning( disable : 4100 4251 4275 4996 4512 4201 4244 4189 4389 4245 4127 4458 4457)
 
 #include "utils.h"
-#include "vraygeom.h"
 #include "rayserver.h"
 #include "plugman.h"
 #include "vrayplugins.h"
-#include "defparams.h"
-#include "factory.h"
+#include "vraygeom.h"
+
+#include <vrender_plugin_renderer_brdf_wrapper.h>
+
 #include "vraysceneplugman.h"
-#include "vrender_unicode.h"
+#include <vrender_plugin_renderer_interface.h>
+#include "pb2template_generator.h"
+
+#pragma warning ( pop )
 
 //************************************************************
 // #defines
@@ -41,7 +42,7 @@
 #define REFNO_PBLOCK 0
 
 // Paramblock2 parameter list
-enum {
+enum param_list{
 	pb_file,
 	pb_shaders_file,
 	pb_use_node_attributes,		// Not used anymore but kept for retrocomp
@@ -63,8 +64,8 @@ enum {
 	pb_frustum_enable,
 	pb_frustum_margin,
 	pb_camera_margin,
-	// vray 
-	pb_frame_offset,
+	// vray
+	pb_frame_offset,			// Not used anymore but kept for retrocomp
 	pb_scale_transform,			// Not used anymore but kept for retrocomp
 	pb_object_id_base,			// Not used anymore but kept for retrocomp
 	pb_primary_visibility,		// Not used anymore but kept for retrocomp
@@ -81,9 +82,12 @@ enum {
 	pb_instancing_enable,
 	// layout
 	pb_layout_enable,
-	pb_layout_name,
-	pb_layout_dir,
+	pb_layout_file,
+	pb_layout_name,				// Not used anymore but kept for retrocomp
+	pb_layout_dir,				// Not used anymore but kept for retrocomp
 	pb_terrain_file,
+	pb_geometry_tag,
+	pb_fframe_offset,
 };
 
 //************************************************************
@@ -116,19 +120,19 @@ class VRayGolaem;
 // why we create one wrapper material for each 3ds Max material in the scene. This also allows
 // the Golaem plugin to find the materials automatically if they have the correct name in the
 // 3ds Max scene.
-class BRDFWrapper: public Plugin, public VR::MaterialInterface, public VR::BSDFInterface {
-	VR::VRenderMtl *vrayMtl;
-	Mtl *maxMtl;
-	ULONG maxMtlFlags;
-	int mtlID;
-	VRayGolaem *golaemInstance;
+class GolaemBRDFWrapper : public Plugin, public VR::MaterialInterface, public VR::BSDFInterface {
+	VR::VRenderMtl *_vrayMtl;
+	Mtl *_maxMtl;
+	ULONG _maxMtlFlags;
+	int _mtlID;
+	VRayGolaem *_golaemInstance;
 public:
-	BRDFWrapper(void);
+	GolaemBRDFWrapper(void);
 
 	// From PluginBase
 	PluginInterface* newInterface(InterfaceID id) VRAY_OVERRIDE {
-		if (id==EXT_MATERIAL) return static_cast<MaterialInterface*>(this);
-		else if (id==EXT_BSDF) return static_cast<BSDFInterface*>(this);
+		if (id == EXT_MATERIAL) return static_cast<MaterialInterface*>(this);
+		else if (id == EXT_BSDF) return static_cast<BSDFInterface*>(this);
 		else return PluginBase::newInterface(id);
 	}
 
@@ -158,7 +162,10 @@ typedef GlmSimulationData_v0 GlmSimulationData;
 struct GlmFrameData_v0;
 typedef GlmFrameData_v0 GlmFrameData;
 
-class VRayGolaem: public GeomObject, public VR::VRenderObject, public VR::VRayPluginRendererInterface 
+class VRayGolaem
+	: public GeomObject
+	, public VR::VRenderObject
+	, public ObjectIDWrapperInterface
 {
 	friend class VRayGolaemInstanceBase;
 	friend class VRayGolaemDlgProc;
@@ -180,8 +187,7 @@ class VRayGolaem: public GeomObject, public VR::VRenderObject, public VR::VRayPl
 
 	// layout attributes
 	bool _layoutEnable;
-	CStr _layoutName;
-	CStr _layoutDir;
+	CStr _layoutFile;
 	CStr _terrainFile;
 
 	// MoBlur attributes
@@ -197,10 +203,11 @@ class VRayGolaem: public GeomObject, public VR::VRenderObject, public VR::VRayPl
 	float _cameraMargin;
 
 	// Vray attributes
-	int _frameOffset;
+	float _frameOffset;
 	int _objectIDBase;
 	short _objectIDMode;
 	float _displayPercent;
+	int _geometryTag;
 	bool _instancingEnable;
 	bool _primaryVisibility;
 	bool _castsShadows;
@@ -214,6 +221,7 @@ class VRayGolaem: public GeomObject, public VR::VRenderObject, public VR::VRayPl
 	// Internal attributes
 	MaxSDK::Array<GlmSimulationData*> _simulationData;
 	MaxSDK::Array<GlmFrameData*> _frameData;
+	MaxSDK::Array<int64_t> _exclusionData;
 	bool _updateCacheData;
 	Box3 _nodeBbox;					//!< Node bbox
 
@@ -248,12 +256,12 @@ public:
 	ObjectState Eval(TimeValue time);
 
 	void InitNodeName(TSTR& s) { s=STR_CLASSNAME; }
-	ObjectHandle ApplyTransform(Matrix3& matrix) { return this; }
+	ObjectHandle ApplyTransform(Matrix3& /*matrix*/) { return this; }
 	Interval ObjectValidity(TimeValue t);
 
 	// We don't convert to anything
-	int CanConvertToType(Class_ID obtype) { return FALSE; }
-	Object* ConvertToType(TimeValue t, Class_ID obtype) { assert(0);return NULL; }
+	int CanConvertToType(Class_ID /*obtype*/) { return FALSE; }
+	Object* ConvertToType(TimeValue /*t*/, Class_ID /*obtype*/) { assert(0);return NULL; }
 	
 	void GetWorldBoundBox(TimeValue t, INode *mat, ViewExp *vpt, Box3& box);
 	void GetLocalBoundBox(TimeValue t, INode *mat, ViewExp *vpt, Box3& box);
@@ -279,7 +287,7 @@ public:
 	// Direct paramblock access
 	//////////////////////////////////////////
 	int	NumParamBlocks() { return 1; }	
-	IParamBlock2* GetParamBlock(int i) { return pblock2; }
+	IParamBlock2* GetParamBlock(int /*i*/) { return pblock2; }
 	IParamBlock2* GetParamBlockByID(BlockID id) { return (pblock2->ID() == id) ? pblock2 : NULL; }
 
 	int NumSubs() { return 1; }  
@@ -293,17 +301,16 @@ public:
 	RefTargetHandle GetReference(int i);
 	void SetReference(int i, RefTargetHandle rtarg);
 
-#if GET_MAX_RELEASE(VERSION_3DSMAX) < 8900
-	RefTargetHandle Clone(RemapDir& remap=NoRemap());
-#else
-	RefTargetHandle Clone(RemapDir& remap=DefaultRemapDir());
-#endif
+	RefTargetHandle Clone(RemapDir& remap);
+	RefTargetHandle Clone();
+
 	RefResult NotifyRefChanged(NOTIFY_REF_CHANGED_ARGS);
 
 	//////////////////////////////////////////
 	// Draw
 	//////////////////////////////////////////
-	void readGolaemCache(TimeValue t);
+	void getCurrentFrame(const TimeValue t, float &currentFrame, float& frameMin, float& frameMax, float& factor);
+	void readGolaemCache(const Matrix3& transform, TimeValue t);
 	void draw(TimeValue t, INode *node, ViewExp *vpt);
 	void drawEntities(GraphicsWindow *gw, const Matrix3& transform, TimeValue t);
 
@@ -318,7 +325,6 @@ public:
 	//////////////////////////////////////////
 	// From VRayPluginRendererInterface
 	//////////////////////////////////////////
-	PluginManager* getPluginManager(void);
 	PluginBase* getPlugin(void) { return NULL; }
 
 	//////////////////////////////////////////
@@ -332,16 +338,10 @@ public:
 	void frameBegin(TimeValue t, VR::VRayCore *vray);
 	void frameEnd(VR::VRayCore *vray);
 
-	int getObjectID(void) const { return _objectIDBase; }
+	// From ObjectIDWrapperInterface
+	int getObjectID() VRAY_OVERRIDE { return _objectIDBase; }
 
 private:	
-	void callRenderBegin(VR::VRayCore *vray);
-	void callRenderEnd(VR::VRayCore *vray);
-	void callFrameBegin(VR::VRayCore *vray);
-	void callFrameEnd(VR::VRayCore *vray);
-
-	void compileGeometry(VR::VRayCore *vray);
-	void clearGeometry(VR::VRayCore *vray);
 	void updateVRayParams(TimeValue t);
 
 	// Enable or disable some UI controls based on the settings.
@@ -353,11 +353,11 @@ private:
 
 	// Enumerate the sub-materials for the given 3ds Max materials and create
 	// wrappers for it.
-	void enumMaterials(Mtl *mtl);
+	void enumMaterials(VUtils::VRayCore *vray, Mtl *mtl);
 
 	// Create a wrapper material in the plugin manager for this 3ds Max material.
 	// Only V-Ray compatible materials are supported.
-	void wrapMaterial(Mtl *mtl);
+	void wrapMaterial(VUtils::VRayCore *vray, Mtl *mtl);
 };
 
 //************************************************************
@@ -372,8 +372,6 @@ public:
 	int proc(ViewExp *vpt, int msg, int point, int flags, IPoint2 m, Matrix3& mat);
 	void SetObj(VRayGolaem *obj) { sphere=obj; }
 };
-
-extern PluginManager *golaemPlugman; // We need this to store the instance of the Golaem plugin
 
 //************************************************************
 // Inline
@@ -390,9 +388,7 @@ void drawText(GraphicsWindow *gw, const MCHAR*  text, const Point3& pos);
 
 Matrix3 golaemToMax();
 Matrix3 maxToGolaem();
+void maxToGolaem(const Matrix3& matrix, float* outArray);
 
 INode* FindNodeRef(ReferenceTarget *rt );
 INode* GetNodeRef(ReferenceMaker *rm);
-
-
-#endif // __VRAYGOLAEM_H__

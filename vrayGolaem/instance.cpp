@@ -5,16 +5,10 @@
 ***************************************************************************/
 
 #include "instance.h"
-#include "tomax.h"
-#include "misc_ray.h"
-#include "plugman.h"
-#include "factory.h"
-#include "vrayplugins.h"
+
+#include "vraygolaem.h"
 
 using namespace VR;
-
-PluginManager *golaemPlugman=NULL; // We need this to store the instance of the Golaem plugin
-Factory *golaemFactory=NULL; // Factory to hold plugin parameters
 
 VRayGolaemInstanceBase::VRayGolaemInstanceBase(VRayGolaem *_vrayGolaem, INode *node, VRayCore *vray, int renderID) {
 	VRenderInstance::init(_vrayGolaem, node, vray, renderID);
@@ -43,11 +37,8 @@ void VRayGolaemInstanceBase::frameBegin(TimeValue t, VRayCore *vray) {
 void VRayGolaemInstanceBase::frameEnd(VRayCore *vray) {
 	VRenderInstance::frameEnd(vray);
 	if (!renderObject) return;
-	static_cast<VRayGolaem*>(renderObject)->clearGeometry(vray);
 }
 
-void VRayGolaemInstanceBase::compileGeometry(VR::VRayCore *vray) {
+void VRayGolaemInstanceBase::compileGeometry(VR::VRayCore* /*vray*/) {
 	if (!renderObject) return;
-	static_cast<VRayGolaem*>(renderObject)->compileGeometry(vray);
 }
-
