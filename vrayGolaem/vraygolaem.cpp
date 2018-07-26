@@ -1275,7 +1275,7 @@ void VRayGolaem::wrapMaterial(VUtils::VRayCore* vray, Mtl* mtl)
     if (!mtl)
         return;
 
-    VR::VRenderMtl* vrenderMtl = VR::getVRenderMtl(mtl, static_cast<VR::VRayRenderer*>(vray));
+    VR::VRenderMtl* vrenderMtl = VR::getVRenderMtl(mtl);
     if (!vrenderMtl)
         return; // Material is not V-Ray compatible, can't do anything.
 
@@ -1329,10 +1329,11 @@ void VRayGolaem::enumMaterials(VUtils::VRayCore* vray, Mtl* mtl)
 
 void VRayGolaem::createMaterials(VR::VRayCore* vray)
 {
+    const VR::VRaySequenceData& sdata = vray->getSequenceData();
+
     INode* inode = getNode(this);
-    if (NULL == inode)
+    if (!inode)
     {
-        const VR::VRaySequenceData& sdata = vray->getSequenceData();
         if (sdata.progress)
         {
             const TCHAR* name_wstr = GetObjectName();
@@ -1340,6 +1341,11 @@ void VRayGolaem::createMaterials(VR::VRayCore* vray)
             sdata.progress->warning("No node found for Golaem object \"%s\"; can't create materials", name_mbcs ? name_mbcs : "<unknown>");
         }
         return;
+    }
+
+    if (sdata.progress)
+    {
+        sdata.progress->info("VRayGolaem: Create materials attached to the VRayGolaem node");
     }
 
     enumMaterials(vray, inode->GetMtl());
@@ -1385,20 +1391,67 @@ static GolaemBRDFMaterialDesc golaemWrapperMaterialDesc;
 //------------------------------------------------------------
 // renderBegin / renderEnd
 //------------------------------------------------------------
-void VRayGolaem::renderBegin(TimeValue t, VR::VRayCore* _vray)
+void VRayGolaem::renderBegin(TimeValue t, VR::VRayCore* vrayCore)
 {
-    VR::VRayRenderer* vray = static_cast<VR::VRayRenderer*>(_vray);
+    VR::VRayRenderer* vray = static_cast<VR::VRayRenderer*>(vrayCore);
     VRenderObject::renderBegin(t, vray);
-
-    updateVRayParams(t);
 
     const VR::VRaySequenceData& sdata = vray->getSequenceData();
 
-    VRenderPluginRendererInterface* pluginRenderer = queryInterface<VRenderPluginRendererInterface>(vray, EXT_VRENDER_PLUGIN_RENDERER);
-    pluginRenderer->registerPlugin(wrapperMaterialDesc);
-    pluginRenderer->registerPlugin(golaemWrapperMaterialDesc);
+    VRenderPluginRendererInterface* pluginRenderer =
+        queryInterface<VRenderPluginRendererInterface>(vray, EXT_VRENDER_PLUGIN_RENDERER);
     vassert(pluginRenderer);
 
+    pluginRenderer->registerPlugin(wrapperMaterialDesc);
+    pluginRenderer->registerPlugin(golaemWrapperMaterialDesc);
+
+    updateVRayParams(t);
+
+    // Create wrapper plugins for all 3ds Max materials in the scene,
+    // so that the Golaem plugin can use them, if needed.
+    createMaterials(vray);
+
+#if 1
+    PluginManager* plugMan = pluginRenderer->getPluginManager();
+    vassert(plugMan);
+
+    // Load the .vrscene into the plugin manager
+    _vrayScene = new VR::VRayScene(plugMan);
+
+    int prevNbPlugins(plugMan->enumPlugins(NULL));
+    int newNbPlugins = prevNbPlugins;
+
+    if (_shadersFile.empty())
+    {
+        if (sdata.progress)
+        {
+            sdata.progress->warning("VRayGolaem: No shaders .vrscene file specified");
+        }
+    }
+    else
+    {
+        const VR::ErrorCode errCode = _vrayScene->readFile(_shadersFile.ptr());
+        newNbPlugins = plugMan->enumPlugins(NULL);
+        if (errCode.error())
+        {
+            if (sdata.progress)
+            {
+                const VR::CharString errMsg = errCode.getErrorString();
+                sdata.progress->warning("VRayGolaem: Error loading shaders .vrscene file \"%s\": %s",
+                                        _shadersFile.ptr(), errMsg.ptr());
+            }
+        }
+        else
+        {
+            if (sdata.progress)
+            {
+                sdata.progress->info("VRayGolaem: Shaders file \"%s\" loaded successfully, %i materials loaded",
+                                     _shadersFile.ptr(), newNbPlugins - prevNbPlugins);
+            }
+        }
+        prevNbPlugins = newNbPlugins;
+    }
+#else
     PluginManager* plugMan = pluginRenderer->getPluginManager();
     vassert(plugMan);
 
@@ -1437,9 +1490,6 @@ void VRayGolaem::renderBegin(TimeValue t, VR::VRayCore* _vray)
     int prevNbPlugins(plugMan->enumPlugins(NULL));
     int newNbPlugins(prevNbPlugins);
 
-    // Create wrapper plugins for all 3ds Max materials in the scene, so that the Golaem plugin can use them, if needed
-    sdata.progress->info("VRayGolaem: Create materials attached to the VRayGolaem node");
-    createMaterials(vray);
     newNbPlugins = plugMan->enumPlugins(NULL);
     sdata.progress->info("VRayGolaem: Materials created successfully, %i materials created", newNbPlugins - prevNbPlugins);
     prevNbPlugins = newNbPlugins;
@@ -1575,6 +1625,7 @@ void VRayGolaem::renderBegin(TimeValue t, VR::VRayCore* _vray)
     {
         sdata.progress->warning("VRayGolaem: No GolaemCrowd node found in the current scene");
     }
+#endif
 }
 
 void VRayGolaem::renderEnd(VR::VRayCore* _vray)
@@ -1609,23 +1660,26 @@ void VRayGolaem::frameEnd(VR::VRayCore* _vray)
 //------------------------------------------------------------
 VR::VRenderInstance* VRayGolaem::newRenderInstance(INode* inode, VR::VRayCore* vray, int renderID)
 {
-    if (vray)
+    vassert(vray);
+
+    const VR::VRaySequenceData& sdata = vray->getSequenceData();
+    if (sdata.progress)
     {
-        const VR::VRaySequenceData& sdata = vray->getSequenceData();
-        if (sdata.progress)
-        {
-            const TCHAR* nodeName = inode ? inode->GetName() : _T("");
-            GET_MBCS(nodeName, nodeName_mbcs);
-            sdata.progress->debug("VRayGolaem: newRenderInstance() for node \"%s\"", nodeName_mbcs);
-        }
+        const TCHAR* nodeName = inode ? inode->GetName() : _T("");
+        GET_MBCS(nodeName, nodeName_mbcs);
+
+        sdata.progress->debug("VRayGolaem: newRenderInstance() for node \"%s\"", nodeName_mbcs);
     }
-    VRayGolaemInstanceBase* golaemInstance = new VRayGolaemInstanceBase(this, inode, vray, renderID);
+
+    VRayGolaemInstance* golaemInstance = new VRayGolaemInstance(*this, inode, vray, renderID);
+    golaemInstance->newVRayPlugin(*vray);
+
     return golaemInstance;
 }
 
 void VRayGolaem::deleteRenderInstance(VR::VRenderInstance* ri)
 {
-    delete static_cast<VRayGolaemInstanceBase*>(ri);
+    delete static_cast<VRayGolaemInstance*>(ri);
 }
 
 //************************************************************
