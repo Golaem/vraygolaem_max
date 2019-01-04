@@ -3,18 +3,15 @@
 *  Copyright (C) Chaos Group & Golaem S.A. - All Rights Reserved.          *
 *                                                                          *
 ***************************************************************************/
+
 #include "vraygolaem.h"
-
 #include "instance.h"
-
 #include "resource.h"
 
 #pragma warning (push)
-#pragma warning (disable: 4100 4535)
-
+#pragma warning (disable: 4100 4251 4324 4458 4535)
 #include "maxscript/maxscript.h"
 
-#pragma warning (pop)
 
 // V-Ray plugin ID for the 3ds Max material wrapper
 #define GLM_MTL_WRAPPER_VRAY_ID LARGE_CONST(0x2015080783)
@@ -32,8 +29,11 @@
 
 #define GLMC_IMPLEMENTATION
 #define GLMC_NOT_INCLUDE_MINIZ
+#pragma warning (push)
+#pragma warning (disable: 4251)
 #include "glm_crowd.h"	// golaem cache reader
 #include "glm_crowd_io.h"	// golaem cache reader
+#pragma warning (pop)
 
 // no param block script access for VRay free
 #ifdef _FREE_

@@ -8,13 +8,11 @@
 
 #pragma warning( push )
 #pragma warning( disable : 4840)
-
 #include "max.h"
-
 #pragma warning ( pop )
 
 #pragma warning( push )
-#pragma warning( disable : 4100 4251 4275 4996 4512 4201 4244 4189 4324 4389 4245 4127 4458 4457)
+#pragma warning( disable : 4100 4127 4189 4201 4244 4245 4251 4275 4324 4389 4457 4458 4512 4996)
 
 #include "utils.h"
 #include "rayserver.h"
