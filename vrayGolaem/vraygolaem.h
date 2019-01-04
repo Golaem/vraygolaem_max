@@ -378,7 +378,7 @@ public:
 };
 
 //************************************************************
-// Inline
+// Accessors
 //************************************************************
 
 bool isCharInvalidVrscene(char c);
@@ -390,9 +390,45 @@ void drawBBox(GraphicsWindow *gw, const Box3 &b);
 void drawSphere(GraphicsWindow *gw, const Point3 &pos, float radius, int nsegs);
 void drawText(GraphicsWindow *gw, const MCHAR*  text, const Point3& pos);
 
+//************************************************************
+// Inline
+//************************************************************
+
 Matrix3 golaemToMax();
 Matrix3 maxToGolaem();
 void maxToGolaem(const Matrix3& matrix, float* outArray);
 
-INode* FindNodeRef(ReferenceTarget *rt );
-INode* GetNodeRef(ReferenceMaker *rm);
+
+//************************************************************
+// Inline draw functions
+//************************************************************
+
+inline Matrix3 golaemToMax()
+{
+	return RotateXMatrix((float)pi / 2);
+}
+
+inline Matrix3 maxToGolaem()
+{
+	return RotateXMatrix(-(float)pi / 2);
+}
+
+inline void maxToGolaem(const Matrix3& matrix, float* outArray)
+{
+	outArray[0] = matrix[0][0];
+	outArray[1] = matrix[0][1];
+	outArray[2] = matrix[0][2];
+	outArray[3] = 0.f;
+	outArray[4] = matrix[1][0];
+	outArray[5] = matrix[1][1];
+	outArray[6] = matrix[1][2];
+	outArray[7] = 0.f;
+	outArray[8] = matrix[2][0];
+	outArray[9] = matrix[2][1];
+	outArray[10] = matrix[2][2];
+	outArray[11] = 0.f;
+	outArray[12] = matrix[3][0];
+	outArray[13] = matrix[3][1];
+	outArray[14] = matrix[3][2];
+	outArray[15] = 1.f;
+}

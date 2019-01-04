@@ -1759,7 +1759,7 @@ void splitStr(const CStr& input, char delim, MaxSDK::Array<CStr> & result)
 
 
 //************************************************************
-// Inline draw functions
+// Accessors draw functions
 //************************************************************
 
 inline void drawLine(GraphicsWindow *gw, const Point3 &p0, const Point3 &p1) 
@@ -1842,36 +1842,6 @@ inline void drawText(GraphicsWindow *gw, const MCHAR* text, const Point3& pos)
 	ipt.y--;
 	gw->setColor(TEXT_COLOR, 1.0f, 1.0f, 1.0f);
 	gw->wText(&ipt, text);
-}
-
-inline Matrix3 golaemToMax()
-{
-	return RotateXMatrix((float)pi/2);
-}
-
-inline Matrix3 maxToGolaem()
-{
-	return RotateXMatrix(-(float)pi/2);
-}
-
-inline void maxToGolaem(const Matrix3& matrix, float* outArray)
-{
-	outArray[0] = matrix[0][0];
-	outArray[1] = matrix[0][1];
-	outArray[2] = matrix[0][2];
-	outArray[3] = 0.f;
-	outArray[4] = matrix[1][0];
-	outArray[5] = matrix[1][1];
-	outArray[6] = matrix[1][2];
-	outArray[7] = 0.f;
-	outArray[8] = matrix[2][0];
-	outArray[9] = matrix[2][1];
-	outArray[10] = matrix[2][2];
-	outArray[11] = 0.f;
-	outArray[12] = matrix[3][0];
-	outArray[13] = matrix[3][1];
-	outArray[14] = matrix[3][2];
-	outArray[15] = 1.f;
 }
 
 // V-Ray materials expect rc.rayresult.sd to derive from VR::ShadeData, but this is not true for
