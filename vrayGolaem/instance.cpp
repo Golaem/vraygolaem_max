@@ -6,7 +6,7 @@
 #include "vraygolaem.h"
 
 #pragma warning (push)
-#pragma warning (disable: 4100 4535 4251)
+#pragma warning (disable: 4100 4251 4324 4458 4535)
 #include <defparams.h>
 #include <tomax.h>
 #include <vray_plugins_ids.h>
