@@ -5,12 +5,11 @@
 #include "instance.h"
 #include "vraygolaem.h"
 
-#include <tomax.h>
-#include <defparams.h>
-#include <vray_plugins_ids.h>
-
 #pragma warning (push)
-#pragma warning (disable: 4100 4535)
+#pragma warning (disable: 4100 4535 4251)
+#include <defparams.h>
+#include <tomax.h>
+#include <vray_plugins_ids.h>
 #pragma warning (pop)
 
 using namespace VUtils;
