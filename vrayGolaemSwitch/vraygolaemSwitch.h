@@ -14,7 +14,7 @@
 #pragma warning ( pop )
 
 #pragma warning( push )
-#pragma warning( disable : 4201 4100 4996 4244 4512 4389 4189 4127 4458)
+#pragma warning( disable : 4201 4100 4996 4244 4512 4389 4189 4127 4458 4505)
 
 #include "utils.h"
 #include "vraydmcsampler.h"
@@ -23,7 +23,7 @@
 #include "vraytexutils.h"
 #include "vrender_unicode.h"
 #include "iparamm2.h"
-//
+
 #include "shadedata_new.h"
 #include "pb2template_generator.h"
 
