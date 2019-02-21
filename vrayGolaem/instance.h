@@ -1,12 +1,13 @@
-//
-// Copyright (C) Chaos Group & Golaem S.A. - All Rights Reserved.
-//
+/***************************************************************************
+*                                                                          *
+*  Copyright (C) Chaos Group & Golaem S.A. - All Rights Reserved.          *
+*                                                                          *
+***************************************************************************/
 
-#ifndef __VRAY_GOLAEM_INSTANCE_H__
-#define __VRAY_GOLAEM_INSTANCE_H__
+#pragma once
 
 #pragma warning(push)
-#pragma warning(disable : 4840)
+#pragma warning(disable : 4840 4458)
 #include "max.h"
 #pragma warning(pop)
 
@@ -74,5 +75,3 @@ private:
     /// Dummy 3dsmax mesh.
     Mesh dummyMesh;
 };
-
-#endif // __VRAY_GOLAEM_INSTANCE_H__

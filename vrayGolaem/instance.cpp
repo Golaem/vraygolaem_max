@@ -1,6 +1,8 @@
-//
-// Copyright (C) Chaos Group & Golaem S.A. - All Rights Reserved.
-//
+/***************************************************************************
+*                                                                          *
+*  Copyright (C) Chaos Group & Golaem S.A. - All Rights Reserved.          *
+*                                                                          *
+***************************************************************************/
 
 #include "instance.h"
 #include "vraygolaem.h"
